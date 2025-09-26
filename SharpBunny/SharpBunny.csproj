@@ -5,6 +5,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <!-- NuGet package metadata -->
+    <PackageId>SharpBunny</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Matthew Retzer</Authors>
+    <Company>retznutz</Company>
+    <Description>A bunny.net API implimentation for .NET</Description>
+    <PackageTags>messaging;communication;dotnet;library</PackageTags>
+    <RepositoryUrl>https://github.com/retznutz/SharpBunny</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/retznutz/SharpBunny</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>
