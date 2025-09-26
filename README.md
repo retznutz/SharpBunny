@@ -1,5 +1,5 @@
 # SharpBunny
-.NET 8.x client implementation for the Bunny.net Stream API
+.NET 8.x client implementation for the Bunny.net Stream API.  Full disclosure, I wanted to try out github co-pilot, and this seemed like a useful project.  I am reviewing what co-pilot writes and updating anything I find broken or not correct.
 
 ## Overview
 
