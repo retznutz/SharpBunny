@@ -1,24 +1,29 @@
 ﻿using SharpBunny;
+using System.Text;
 
 // Sample program demonstrating SharpBunny usage
-Console.WriteLine("SharpBunny - Bunny.net Stream API Client Sample");
-Console.WriteLine("===============================================");
+Console.WriteLine("SharpBunny - Bunny.net API Client Sample");
+Console.WriteLine("=========================================");
 
-// Note: In a real application, store your API key securely (environment variables, Azure Key Vault, etc.)
-const string apiKey = "your-api-key-here";
+// Note: In a real application, store your API keys securely (environment variables, Azure Key Vault, etc.)
+const string streamApiKey = "your-stream-api-key-here";
+const string storageZonePassword = "your-storage-zone-password-here";
+const string storageZoneName = "your-storage-zone-name";
 const int libraryId = 12345; // Your video library ID
 
 try
 {
-    // Initialize the API client
-    var api = new BunnyStreamApi(apiKey);
-    Console.WriteLine("✓ API client initialized");
+    Console.WriteLine("\n=== Stream API Examples ===");
+    
+    // Initialize the Stream API client
+    var streamApi = new BunnyStreamApi(streamApiKey);
+    Console.WriteLine("✓ Stream API client initialized");
 
     Console.WriteLine("\n--- Collection Management ---");
     
     // Get all collections
     Console.WriteLine("Fetching collections...");
-    var collections = await api.Collections.GetCollectionsAsync(libraryId, page: 1, itemsPerPage: 10);
+    var collections = await streamApi.Collections.GetCollectionsAsync(libraryId, page: 1, itemsPerPage: 10);
     
     Console.WriteLine($"Found {collections.TotalItems} collections (showing {collections.Items.Count}):");
     foreach (var collection in collections.Items)
@@ -29,7 +34,7 @@ try
     // Create a new collection (commented out to avoid creating test data)
     /*
     Console.WriteLine("\nCreating new collection...");
-    var newCollection = await api.Collections.CreateCollectionAsync(libraryId, "Sample Collection from SharpBunny");
+    var newCollection = await streamApi.Collections.CreateCollectionAsync(libraryId, "Sample Collection from SharpBunny");
     Console.WriteLine($"✓ Created collection: {newCollection.Name} (ID: {newCollection.Guid})");
     */
 
@@ -37,7 +42,7 @@ try
     
     // Get videos
     Console.WriteLine("Fetching videos...");
-    var videos = await api.Videos.GetVideosAsync(libraryId, page: 1, itemsPerPage: 10);
+    var videos = await streamApi.Videos.GetVideosAsync(libraryId, page: 1, itemsPerPage: 10);
     
     Console.WriteLine($"Found {videos.TotalItems} videos (showing {videos.Items.Count}):");
     foreach (var video in videos.Items)
@@ -63,16 +68,68 @@ try
         Console.WriteLine();
     }
 
-    // Example of searching videos
-    Console.WriteLine("Searching for videos containing 'sample'...");
-    var searchResults = await api.Videos.GetVideosAsync(libraryId, search: "sample", itemsPerPage: 5);
-    Console.WriteLine($"Found {searchResults.TotalItems} videos matching 'sample'");
+    Console.WriteLine("\n=== Edge Storage API Examples ===");
+    
+    // Initialize the Edge Storage API client
+    var edgeStorageApi = new BunnyEdgeStorageApi(storageZonePassword);
+    Console.WriteLine("✓ Edge Storage API client initialized");
+
+    Console.WriteLine("\n--- File Management ---");
+    
+    // List files in the root directory
+    Console.WriteLine("Listing files in root directory...");
+    var files = await edgeStorageApi.EdgeStorage.ListFilesAsync(
+        storageZoneName,
+        storageZonePassword: storageZonePassword);
+    
+    Console.WriteLine($"Found {files.Count} items in root directory:");
+    foreach (var file in files)
+    {
+        var type = file.IsDirectory ? "📁 DIR " : "📄 FILE";
+        var size = file.IsDirectory ? "" : $" ({file.Length:N0} bytes)";
+        Console.WriteLine($"  {type} {file.ObjectName}{size}");
+        if (!file.IsDirectory && !string.IsNullOrEmpty(file.ContentType))
+        {
+            Console.WriteLine($"       Content-Type: {file.ContentType}");
+        }
+    }
+
+    // Example of uploading a small text file (commented out to avoid creating test data)
+    /*
+    Console.WriteLine("\nUploading sample file...");
+    var sampleContent = Encoding.UTF8.GetBytes("Hello from SharpBunny Edge Storage API! 🚀");
+    await edgeStorageApi.EdgeStorage.UploadFileAsync(
+        storageZoneName,
+        "sample-file.txt",
+        sampleContent,
+        path: "test-folder",
+        storageZonePassword: storageZonePassword);
+    Console.WriteLine("✓ File uploaded successfully");
+
+    Console.WriteLine("\nDownloading the file back...");
+    var downloadedContent = await edgeStorageApi.EdgeStorage.DownloadFileAsync(
+        storageZoneName,
+        "sample-file.txt",
+        path: "test-folder",
+        storageZonePassword: storageZonePassword);
+    
+    var downloadedText = Encoding.UTF8.GetString(downloadedContent);
+    Console.WriteLine($"Downloaded content: {downloadedText}");
+
+    Console.WriteLine("\nDeleting the sample file...");
+    await edgeStorageApi.EdgeStorage.DeleteFileAsync(
+        storageZoneName,
+        "sample-file.txt",
+        path: "test-folder",
+        storageZonePassword: storageZonePassword);
+    Console.WriteLine("✓ File deleted successfully");
+    */
 
     Console.WriteLine("\n--- Error Handling Example ---");
     try
     {
         // This will likely fail with a 404 error
-        await api.Collections.GetCollectionAsync(libraryId, "non-existent-collection-id");
+        await streamApi.Collections.GetCollectionAsync(libraryId, "non-existent-collection-id");
     }
     catch (BunnyApiException ex)
     {
@@ -89,7 +146,7 @@ try
 catch (ArgumentException ex)
 {
     Console.WriteLine($"❌ Configuration error: {ex.Message}");
-    Console.WriteLine("Please update the apiKey and libraryId constants in Program.cs with your actual values.");
+    Console.WriteLine("Please update the API keys and configuration constants in Program.cs with your actual values.");
 }
 catch (BunnyApiException ex)
 {
@@ -98,7 +155,7 @@ catch (BunnyApiException ex)
     
     if (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
     {
-        Console.WriteLine("Check that your API key is correct and has the necessary permissions.");
+        Console.WriteLine("Check that your API keys are correct and have the necessary permissions.");
     }
 }
 catch (Exception ex)
