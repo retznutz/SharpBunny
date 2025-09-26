@@ -1,9 +1,9 @@
 # SharpBunny
-.NET 8.x client implementation for the Bunny.net Stream API.  Full disclosure, I wanted to try out github co-pilot, and this seemed like a useful project.  I am reviewing what co-pilot writes and updating anything I find broken or not correct.
+.NET 8.x client implementation for the Bunny.net APIs. Full disclosure, I wanted to try out github co-pilot, and this seemed like a useful project. I am reviewing what co-pilot writes and updating anything I find broken or not correct.
 
 ## Overview
 
-SharpBunny is a comprehensive .NET client library for interacting with both the Bunny.net Stream API and Edge Storage API. It provides a type-safe, async-first approach to managing video collections, videos, and file storage in your Bunny.net services.
+SharpBunny is a comprehensive .NET client library for interacting with Bunny.net APIs including Stream API, Edge Storage API, and General API. It provides a type-safe, async-first approach to managing video collections, videos, file storage, and CDN resources in your Bunny.net services.
 
 ## Features
 
@@ -23,6 +23,14 @@ SharpBunny is a comprehensive .NET client library for interacting with both the 
 - ✅ **Multiple Storage Regions**: Support for different storage zone endpoints
 - ✅ **Type-Safe File Metadata**: Strongly-typed models for file information
 
+### General API
+- ✅ **Countries**: Get country information including tax rates and EU status
+- ✅ **Regions**: Retrieve CDN region data with pricing tiers
+- ✅ **Pull Zones**: Full CDN management including creation, configuration, and deletion
+- ✅ **DNS Zones**: DNS zone management with record operations
+- ✅ **Purge**: Cache purging for URLs and entire pull zones
+- ✅ **Statistics**: Comprehensive analytics for pull zones and billing data
+
 ## Installation
 
 ```bash
@@ -30,6 +38,50 @@ dotnet add package SharpBunny
 ```
 
 ## Quick Start
+
+### General API
+```csharp
+using SharpBunny;
+
+// Initialize the General API client
+var generalApi = new BunnyGeneralApi("your-general-api-key");
+
+// Get all countries
+var countries = await generalApi.Countries.GetCountriesAsync();
+
+foreach (var country in countries)
+{
+    Console.WriteLine($"Country: {country.Name} ({country.Code}) - EU: {country.IsEU}");
+}
+
+// Get all pull zones
+var pullZones = await generalApi.PullZones.GetPullZonesAsync();
+
+foreach (var pullZone in pullZones.Items)
+{
+    Console.WriteLine($"Pull Zone: {pullZone.Name} - Origin: {pullZone.OriginUrl}");
+    Console.WriteLine($"Status: {(pullZone.Enabled ? "Enabled" : "Disabled")}");
+}
+
+// Create a new pull zone
+var createRequest = new CreatePullZoneRequest
+{
+    Name = "my-new-pull-zone",
+    OriginUrl = "https://myorigin.example.com",
+    Type = 0 // Standard pull zone
+};
+var newPullZone = await generalApi.PullZones.CreatePullZoneAsync(createRequest);
+
+// Get pull zone statistics
+var stats = await generalApi.Statistics.GetPullZoneStatisticsAsync(
+    newPullZone.Id,
+    dateFrom: DateTime.UtcNow.AddDays(-30),
+    dateTo: DateTime.UtcNow);
+
+Console.WriteLine($"Bandwidth used: {stats.TotalBandwidthUsed:N0} bytes");
+Console.WriteLine($"Requests served: {stats.TotalRequestsServed:N0}");
+Console.WriteLine($"Cache hit rate: {stats.CacheHitRate:P2}");
+```
 
 ### Stream API
 ```csharp
@@ -107,6 +159,19 @@ await edgeStorageApi.EdgeStorage.DeleteFileAsync(
 ```
 
 ## API Reference
+
+### BunnyGeneralApi
+
+The main entry point for the General API client.
+
+#### Constructor
+```csharp
+// With automatic HttpClient management
+var api = new BunnyGeneralApi("your-general-api-key");
+
+// With custom HttpClient (for DI scenarios)
+var api = new BunnyGeneralApi(httpClient, "your-general-api-key");
+```
 
 ### BunnyStreamApi
 
@@ -225,6 +290,119 @@ var success = await api.Videos.UploadVideoAsync(
 );
 ```
 
+### General API Services
+
+#### Countries Service
+```csharp
+// Get all countries
+var countries = await api.Countries.GetCountriesAsync();
+```
+
+#### Regions Service
+```csharp
+// Get all regions
+var regions = await api.Regions.GetRegionsAsync();
+```
+
+#### Pull Zones Service
+```csharp
+// Get all pull zones
+var pullZones = await api.PullZones.GetPullZonesAsync(
+    page: 1,
+    perPage: 100,
+    search: "example" // optional
+);
+
+// Get specific pull zone
+var pullZone = await api.PullZones.GetPullZoneAsync(pullZoneId);
+
+// Create pull zone
+var createRequest = new CreatePullZoneRequest
+{
+    Name = "my-pull-zone",
+    OriginUrl = "https://origin.example.com",
+    Type = 0 // 0 = Standard, 1 = Volume
+};
+var newPullZone = await api.PullZones.CreatePullZoneAsync(createRequest);
+
+// Update pull zone
+var updateRequest = new UpdatePullZoneRequest
+{
+    OriginUrl = "https://neworigin.example.com",
+    EnableLogging = true,
+    CacheControlMaxAgeOverride = 3600
+};
+var updatedPullZone = await api.PullZones.UpdatePullZoneAsync(pullZoneId, updateRequest);
+
+// Delete pull zone
+await api.PullZones.DeletePullZoneAsync(pullZoneId);
+```
+
+#### DNS Zones Service
+```csharp
+// Get all DNS zones
+var dnsZones = await api.DnsZones.GetDnsZonesAsync(
+    page: 1,
+    perPage: 100,
+    search: "example.com" // optional
+);
+
+// Get specific DNS zone
+var dnsZone = await api.DnsZones.GetDnsZoneAsync(zoneId);
+
+// Create DNS zone
+var newDnsZone = await api.DnsZones.CreateDnsZoneAsync("example.com");
+
+// Delete DNS zone
+await api.DnsZones.DeleteDnsZoneAsync(zoneId);
+```
+
+#### Purge Service
+```csharp
+// Purge entire pull zone cache
+await api.Purge.PurgePullZoneCacheAsync(pullZoneId);
+
+// Purge specific URLs
+var purgeRequest = new PurgeUrlsRequest
+{
+    Urls = new List<string> 
+    { 
+        "https://example.com/image.jpg",
+        "https://example.com/style.css"
+    },
+    Async = false
+};
+await api.Purge.PurgeUrlsAsync(purgeRequest);
+
+// Get purge history
+var purgeHistory = await api.Purge.GetPurgeHistoryAsync(page: 1, perPage: 100);
+```
+
+#### Statistics Service
+```csharp
+// Get pull zone statistics
+var stats = await api.Statistics.GetPullZoneStatisticsAsync(
+    pullZoneId,
+    dateFrom: DateTime.UtcNow.AddDays(-30),
+    dateTo: DateTime.UtcNow,
+    hourly: false,
+    loadErrors: false
+);
+
+// Get billing statistics
+var billingStats = await api.Statistics.GetBillingStatisticsAsync(
+    dateFrom: DateTime.UtcNow.AddMonths(-1),
+    dateTo: DateTime.UtcNow
+);
+
+// Get country statistics for a pull zone
+var countryStats = await api.Statistics.GetPullZoneCountryStatisticsAsync(
+    pullZoneId,
+    dateFrom: DateTime.UtcNow.AddDays(-7),
+    dateTo: DateTime.UtcNow
+);
+```
+
 ### Edge Storage API
 
 #### List Files
@@ -317,6 +495,13 @@ services.AddSingleton(provider =>
     return new BunnyStreamApi(httpClient, "your-stream-api-key");
 });
 
+// General API
+services.AddSingleton(provider =>
+{
+    var httpClient = provider.GetRequiredService<HttpClient>();
+    return new BunnyGeneralApi(httpClient, "your-general-api-key");
+});
+
 // Edge Storage API
 services.AddSingleton(provider =>
 {
@@ -326,6 +511,49 @@ services.AddSingleton(provider =>
 ```
 
 ## Models
+
+### General API Models
+
+#### Country
+- `Id`: Unique country identifier
+- `Name`: Country name
+- `Code`: ISO country code (e.g., "US", "DE")
+- `ContinentCode`: Continent code (e.g., "NA", "EU")
+- `IsEU`: Whether the country is in the European Union
+- `TaxRate`: Tax rate as decimal (e.g., 19 for 19%)
+
+#### Region
+- `Id`: Unique region identifier
+- `Name`: Region name
+- `RegionCode`: Region code
+- `ContinentCode`: Continent code
+- `CountryCode`: Country code
+- `Latitude`/`Longitude`: Geographic coordinates
+- `PriceTier`: Pricing tier level
+- `RegionPrice`: Price per unit in this region
+
+#### PullZone
+- `Id`: Unique pull zone identifier
+- `Name`: Pull zone name
+- `OriginUrl`: Origin server URL
+- `Enabled`: Whether the pull zone is active
+- `Hostnames`: List of custom hostnames
+- `StorageZoneId`: Associated storage zone ID (if any)
+- `ZonePricingTier`: Pricing tier (0 = Standard, 1 = High Volume)
+- `MonthlyBandwidthLimit`/`MonthlyBandwidthUsed`: Bandwidth limits and usage
+- `MonthlyCharges`: Current month charges
+- `Type`: Pull zone type (0 = Standard, 1 = Volume)
+- Various caching, security, and logging configuration options
+
+#### DnsZone
+- `Id`: Unique DNS zone identifier
+- `Domain`: Domain name
+- `RecordsCount`: Number of DNS records
+- `DateCreated`/`DateModified`: Timestamps
+- `Nameservers`: List of nameservers
+- `CustomNameservers`: Custom nameserver configuration
+- `SoaEmail`: SOA record email
+- Various logging and forwarding configuration options
 
 ### Stream API Models
 
@@ -374,7 +602,7 @@ services.AddSingleton(provider =>
 
 ## Contributing
 
-This library implements the core Bunny.net Stream API and Edge Storage API endpoints. If you need additional functionality or find bugs, please open an issue or submit a pull request.
+This library implements the core Bunny.net Stream API, Edge Storage API, and General API endpoints. If you need additional functionality or find bugs, please open an issue or submit a pull request.
 
 ## License
 
