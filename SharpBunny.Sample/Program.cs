@@ -9,6 +9,7 @@ Console.WriteLine("=========================================");
 const string streamApiKey = "your-stream-api-key-here";
 const string storageZonePassword = "your-storage-zone-password-here";
 const string storageZoneName = "your-storage-zone-name";
+const string generalApiKey = "your-general-api-key-here";
 const int libraryId = 12345; // Your video library ID
 
 try
@@ -124,6 +125,69 @@ try
         storageZonePassword: storageZonePassword);
     Console.WriteLine("✓ File deleted successfully");
     */
+
+    Console.WriteLine("\n=== General API Examples ===");
+    
+    // Initialize the General API client  
+    var generalApi = new BunnyGeneralApi(generalApiKey);
+    Console.WriteLine("✓ General API client initialized");
+
+    Console.WriteLine("\n--- Countries ---");
+    
+    // Get all countries
+    Console.WriteLine("Fetching countries...");
+    var countries = await generalApi.Countries.GetCountriesAsync();
+    
+    Console.WriteLine($"Found {countries.Count} countries (showing first 10):");
+    foreach (var country in countries.Take(10))
+    {
+        var euStatus = country.IsEU ? "EU" : "Non-EU";
+        Console.WriteLine($"  • {country.Name} ({country.Code}) - {euStatus} - Tax Rate: {country.TaxRate}%");
+    }
+
+    Console.WriteLine("\n--- Regions ---");
+    
+    // Get all regions
+    Console.WriteLine("Fetching regions...");
+    var regions = await generalApi.Regions.GetRegionsAsync();
+    
+    Console.WriteLine($"Found {regions.Count} regions (showing first 10):");
+    foreach (var region in regions.Take(10))
+    {
+        Console.WriteLine($"  • {region.Name} ({region.RegionCode}) - {region.CountryCode} - Tier {region.PriceTier}");
+    }
+
+    Console.WriteLine("\n--- Pull Zones ---");
+    
+    // Get pull zones
+    Console.WriteLine("Fetching pull zones...");
+    var pullZones = await generalApi.PullZones.GetPullZonesAsync(page: 1, perPage: 10);
+    
+    Console.WriteLine($"Found {pullZones.TotalItems} pull zones (showing {pullZones.Items.Count}):");
+    foreach (var pullZone in pullZones.Items)
+    {
+        var status = pullZone.Enabled ? "Enabled" : "Disabled";
+        Console.WriteLine($"  • {pullZone.Name} - {status}");
+        Console.WriteLine($"    Origin: {pullZone.OriginUrl}");
+        Console.WriteLine($"    Bandwidth: {pullZone.MonthlyBandwidthUsed:N0} / {pullZone.MonthlyBandwidthLimit:N0} bytes");
+        Console.WriteLine($"    Hostnames: {pullZone.Hostnames.Count}");
+        Console.WriteLine();
+    }
+
+    Console.WriteLine("\n--- DNS Zones ---");
+    
+    // Get DNS zones
+    Console.WriteLine("Fetching DNS zones...");
+    var dnsZones = await generalApi.DnsZones.GetDnsZonesAsync(page: 1, perPage: 10);
+    
+    Console.WriteLine($"Found {dnsZones.TotalItems} DNS zones (showing {dnsZones.Items.Count}):");
+    foreach (var dnsZone in dnsZones.Items)
+    {
+        Console.WriteLine($"  • {dnsZone.Domain} ({dnsZone.RecordsCount} records)");
+        Console.WriteLine($"    Created: {dnsZone.DateCreated:yyyy-MM-dd}");
+        Console.WriteLine($"    Nameservers: {string.Join(", ", dnsZone.Nameservers.Take(2))}");
+        Console.WriteLine();
+    }
 
     Console.WriteLine("\n--- Error Handling Example ---");
     try
